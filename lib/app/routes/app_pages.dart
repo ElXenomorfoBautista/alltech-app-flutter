@@ -11,6 +11,8 @@ import '../modules/serviceSheet/create/views/service_sheet_create_view.dart';
 import '../modules/serviceSheet/detail/bindings/service_sheet_detail_binding.dart';
 import '../modules/serviceSheet/detail/views/service_sheet_detail_view.dart';
 import '../modules/serviceSheet/views/service_sheet_view.dart';
+import '../modules/settings/bindings/settings_binding.dart';
+import '../modules/settings/views/settings_view.dart';
 import '../modules/users/bindings/users_binding.dart';
 import '../modules/users/profile/bindings/users_profile_binding.dart';
 import '../modules/users/profile/views/users_profile_view.dart';
@@ -84,6 +86,11 @@ class AppPages {
           binding: ServiceSheetCreateBinding(),
         ),
       ],
+    ),
+    GetPage(
+      name: _Paths.SETTINGS,
+      page: () => SettingsView(),
+      binding: SettingsBinding(),
     ),
   ];
 }

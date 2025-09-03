@@ -10,14 +10,20 @@ class AuthLoginController extends GetxController {
   final password = ''.obs;
   final isLoading = false.obs;
   final rememberSession = false.obs;
+  final obscurePassword =
+      true.obs; // Nuevo observable para mostrar/ocultar contraseña
 
-// Ver alguna configuracion chidita para el .env
+  // Ver alguna configuracion chidita para el .env
   final clientId = 'PHS';
   final clientSecret = 'phs!@2023';
 
+  void togglePasswordVisibility() {
+    obscurePassword.value = !obscurePassword.value;
+  }
+
   void login() async {
     if (username.value.isEmpty || password.value.isEmpty) {
-      Get.snackbar('Error', 'Por favor complete todos los campos');
+      _showErrorSnackbar('Error', 'Por favor complete todos los campos');
       return;
     }
 
@@ -31,27 +37,63 @@ class AuthLoginController extends GetxController {
           rememberSession: rememberSession.value);
 
       if (response.status.isOk) {
-        //final authResponse = response.body;
+        _showSuccessSnackbar('¡Bienvenido!', 'Sesión iniciada correctamente');
         Get.offAllNamed('/home');
       } else {
-        Get.snackbar(
+        _showErrorSnackbar(
           'Error de Autenticación',
-          response.statusText ?? 'Error desconocido',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red[100],
-          colorText: Colors.red[900],
+          response.statusText ?? 'Credenciales incorrectas',
         );
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red[100],
-        colorText: Colors.red[900],
+      _showErrorSnackbar(
+        'Error de Conexión',
+        'Verifica tu conexión a internet e intenta nuevamente',
       );
     } finally {
       isLoading.value = false;
     }
+  }
+
+  void _showErrorSnackbar(String title, String message) {
+    Get.snackbar(
+      title,
+      message,
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: Colors.red.shade100,
+      colorText: Colors.red.shade900,
+      borderRadius: 12,
+      margin: const EdgeInsets.all(16),
+      icon: Icon(
+        Icons.error_outline,
+        color: Colors.red.shade900,
+      ),
+      duration: const Duration(seconds: 4),
+    );
+  }
+
+  void _showSuccessSnackbar(String title, String message) {
+    Get.snackbar(
+      title,
+      message,
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: Colors.green.shade100,
+      colorText: Colors.green.shade900,
+      borderRadius: 12,
+      margin: const EdgeInsets.all(16),
+      icon: Icon(
+        Icons.check_circle_outline,
+        color: Colors.green.shade900,
+      ),
+      duration: const Duration(seconds: 3),
+    );
+  }
+
+  @override
+  void onClose() {
+    // Limpiar datos sensibles al cerrar
+    username.value = '';
+    password.value = '';
+    super.onClose();
   }
 }
