@@ -10,7 +10,7 @@ abstract class BaseProvider extends GetConnect {
   @override
   void onInit() {
     super.onInit();
-    httpClient.baseUrl = 'http://localhost:3000';
+    httpClient.baseUrl = 'https://prepared-overly-guinea.ngrok-free.app';
     setupInterceptors();
   }
 

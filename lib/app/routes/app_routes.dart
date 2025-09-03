@@ -12,6 +12,8 @@ abstract class Routes {
   static const SERVICE_SHEET = _Paths.SERVICE_SHEET;
   static const SERVICE_SHEET_DETAIL =
       _Paths.SERVICE_SHEET + _Paths.SERVICE_SHEET_DETAIL;
+  static const SERVICE_SHEET_CREATE =
+      _Paths.SERVICE_SHEET + _Paths.SERVICE_SHEET_CREATE;
 }
 
 abstract class _Paths {
@@ -25,4 +27,5 @@ abstract class _Paths {
   static const WORK_ORDER_CREATE = '/create';
   static const SERVICE_SHEET = '/service-sheet';
   static const SERVICE_SHEET_DETAIL = '/detail';
+  static const SERVICE_SHEET_CREATE = '/create';
 }

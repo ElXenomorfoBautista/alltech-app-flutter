@@ -7,7 +7,7 @@ class WorkOrderItem {
   double price;
   int itemTypeId;
   int workOrderId;
-  ItemType itemType;
+  ItemType? itemType;
 
   WorkOrderItem({
     required this.id,
@@ -26,7 +26,9 @@ class WorkOrderItem {
         price: double.parse(json['price'].toString()),
         itemTypeId: json['itemTypeId'],
         workOrderId: json['workOrderId'],
-        itemType: ItemType.fromJson(json['itemType']),
+        itemType: json["itemType"] != null
+            ? ItemType.fromJson(json['itemType'])
+            : null,
       );
 
   Map<String, dynamic> toJson() {

@@ -10,4 +10,15 @@ class ServiceSheetProvider extends BaseProvider {
       return handleError(e);
     }
   }
+
+  Future<Response> create(Map<String, dynamic> data) async {
+    try {
+      return await post(
+        '/service-sheets',
+        data,
+      );
+    } catch (e) {
+      return handleError(e);
+    }
+  }
 }

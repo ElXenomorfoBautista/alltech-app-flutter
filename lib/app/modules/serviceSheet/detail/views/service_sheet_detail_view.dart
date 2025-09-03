@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
+import 'dart:io';
 
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -272,15 +274,82 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
                   'Evidencias',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                IconButton(
-                  icon: Icon(Icons.add_a_photo),
-                  onPressed: () {
-                    // TODO: Implementar carga de evidencias
-                  },
-                ),
+                _buildEvidenceActions(),
               ],
             ),
             Divider(),
+            // Mostrar archivos seleccionados
+            Obx(() {
+              if (controller.selectedFiles.isNotEmpty) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'Archivos seleccionados (${controller.selectedFiles.length}):',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      itemCount: controller.selectedFiles.length,
+                      itemBuilder: (context, index) {
+                        final fileWithName = controller.selectedFiles[index];
+                        return _buildSelectedFileItem(index, fileWithName);
+                      },
+                    ),
+                    SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          icon: Icon(Icons.clear),
+                          label: Text('Limpiar'),
+                          onPressed: () => controller.clearSelectedFiles(),
+                        ),
+                        SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          icon: Icon(Icons.cloud_upload),
+                          label: Text('Subir todos'),
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: Colors.blue,
+                          ),
+                          onPressed: () => controller.uploadFiles(),
+                        ),
+                      ],
+                    ),
+                    Divider(),
+                  ],
+                );
+              }
+              return SizedBox();
+            }),
+            // Mostrar progreso de carga si está subiendo
+            Obx(() {
+              if (controller.isUploading.value) {
+                return Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Subiendo archivos...',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: controller.uploadProgress.value,
+                        backgroundColor: Colors.grey[200],
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return SizedBox();
+            }),
             Obx(() {
               if (controller.evidences.isEmpty) {
                 return Center(
@@ -312,6 +381,130 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
     );
   }
 
+  Widget _buildSelectedFileItem(int index, FileWithName fileWithName) {
+    final file = fileWithName.file;
+    final fileName = fileWithName.name;
+
+    // Extraer nombre sin extensión para mostrar en el campo de texto
+    final String nameWithoutExtension = fileName.contains('.')
+        ? fileName.substring(0, fileName.lastIndexOf('.'))
+        : fileName;
+
+    final isImage = fileName.toLowerCase().endsWith('.jpg') ||
+        fileName.toLowerCase().endsWith('.jpeg') ||
+        fileName.toLowerCase().endsWith('.png');
+
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 4),
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: isImage
+                ? Colors.blue.withOpacity(0.1)
+                : Colors.orange.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            isImage ? Icons.image : Icons.insert_drive_file,
+            color: isImage ? Colors.blue : Colors.orange,
+          ),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextFormField(
+              initialValue: nameWithoutExtension,
+              onChanged: (value) => controller.updateFileName(index, value),
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 8),
+                border: InputBorder.none,
+                hintText: 'Nombre del archivo',
+              ),
+            ),
+            // Mostrar la extensión en un texto pequeño de color gris
+            if (fileName.contains('.'))
+              Text(
+                fileName.substring(fileName.lastIndexOf('.')),
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                ),
+              ),
+          ],
+        ),
+        subtitle: Text('${_formatFileSize(file.lengthSync())}'),
+        trailing: IconButton(
+          icon: Icon(Icons.delete, color: Colors.red),
+          onPressed: () => controller.removeFileFromSelection(index),
+        ),
+      ),
+    );
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var i = (log(bytes) / log(1024)).floor();
+    return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
+  }
+
+  Widget _buildEvidenceActions() {
+    // Solo mostrar botones si el usuario es ejecutor o aprobador
+    if (!controller.isExecutor.value && !controller.isApproval.value) {
+      return SizedBox();
+    }
+
+    return PopupMenuButton<String>(
+      icon: Icon(Icons.add_a_photo),
+      tooltip: 'Agregar evidencia',
+      onSelected: (value) {
+        switch (value) {
+          case 'camera':
+            controller.takePhoto();
+            break;
+          case 'gallery':
+            controller.pickImage();
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'camera',
+          child: Row(
+            children: [
+              Icon(Icons.camera_alt, color: Colors.blue),
+              SizedBox(width: 8),
+              Text('Tomar foto'),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'gallery',
+          child: Row(
+            children: [
+              Icon(Icons.photo_library, color: Colors.green),
+              SizedBox(width: 8),
+              Text('Seleccionar imágenes'),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'file',
+          child: Row(
+            children: [
+              Icon(Icons.attach_file, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Seleccionar archivos'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildEvidenceItem(Evidence evidence) {
     final bool isImage = evidence.file?.fileType?.contains('image') ?? false;
 
@@ -322,19 +515,53 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
           border: Border.all(color: Colors.grey[300]!),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: isImage
-              ? Image.network(
-                  evidence.file?.accessUrl ?? '',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      _buildEvidenceErrorPlaceholder(),
-                )
-              : _buildFileTypeIcon(evidence.file?.fileType),
+        child: Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: isImage
+                  ? Image.network(
+                      evidence.file?.accessUrl ?? '',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildEvidenceErrorPlaceholder(),
+                    )
+                  : _buildFileTypeIcon(evidence.file?.fileType),
+            ),
+            // Mostrar fecha en la esquina inferior
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(8),
+                    bottomRight: Radius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  _formatShortDate(evidence.createdOn),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  String _formatShortDate(DateTime? date) {
+    if (date == null) return '';
+    return DateFormat('dd/MM/yy').format(date);
   }
 
   Widget _buildFileTypeIcon(String? fileType) {
@@ -389,16 +616,54 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
               maxWidth: Get.width * 0.8,
               maxHeight: Get.height * 0.8,
             ),
-            child: Image.network(
-              evidence.file?.accessUrl ?? '',
-              fit: BoxFit.contain,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppBar(
+                  title: Text('Evidencia'),
+                  centerTitle: true,
+                  leading: IconButton(
+                    icon: Icon(Icons.close),
+                    onPressed: () => Get.back(),
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: Icon(Icons.download),
+                      onPressed: () => _downloadEvidence(evidence),
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: Image.network(
+                    evidence.file?.accessUrl ?? '',
+                    fit: BoxFit.contain,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       );
     } else {
       // Implementar apertura de archivos no imagen
-      launchUrl(Uri.parse(evidence.file?.accessUrl ?? ''));
+      _downloadEvidence(evidence);
+    }
+  }
+
+  void _downloadEvidence(Evidence evidence) {
+    if (evidence.file?.accessUrl != null) {
+      launchUrl(Uri.parse(evidence.file!.accessUrl!));
     }
   }
 }

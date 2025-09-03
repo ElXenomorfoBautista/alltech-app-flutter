@@ -6,6 +6,8 @@ import '../modules/auth/login/views/auth_login_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
 import '../modules/serviceSheet/bindings/service_sheet_binding.dart';
+import '../modules/serviceSheet/create/bindings/service_sheet_create_binding.dart';
+import '../modules/serviceSheet/create/views/service_sheet_create_view.dart';
 import '../modules/serviceSheet/detail/bindings/service_sheet_detail_binding.dart';
 import '../modules/serviceSheet/detail/views/service_sheet_detail_view.dart';
 import '../modules/serviceSheet/views/service_sheet_view.dart';
@@ -75,6 +77,11 @@ class AppPages {
           name: _Paths.SERVICE_SHEET_DETAIL,
           page: () => ServiceSheetDetailView(),
           binding: ServiceSheetDetailBinding(),
+        ),
+        GetPage(
+          name: _Paths.SERVICE_SHEET_CREATE,
+          page: () => ServiceSheetCreateView(),
+          binding: ServiceSheetCreateBinding(),
         ),
       ],
     ),

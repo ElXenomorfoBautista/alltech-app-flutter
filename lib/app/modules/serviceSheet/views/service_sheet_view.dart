@@ -14,6 +14,14 @@ class ServiceSheetView extends GetView<ServiceSheetController> {
         title: Text('Hojas de Servicio'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => {
+              Get.toNamed(
+                Routes.SERVICE_SHEET_CREATE,
+              )
+            },
+          ),
+          IconButton(
             icon: Icon(Icons.refresh),
             onPressed: controller.getServiceSheets,
           ),

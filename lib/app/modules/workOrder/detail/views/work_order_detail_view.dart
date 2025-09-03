@@ -130,9 +130,9 @@ class WorkOrderDetailView extends GetView<WorkOrderDetailController> {
         ],
       ),
       trailing: Chip(
-        label: Text(item.itemType.name ?? ''),
+        label: Text(item.itemType?.name ?? ''),
         backgroundColor:
-            item.itemType.id == 1 ? Colors.blue[100] : Colors.green[100],
+            item.itemType?.id == 1 ? Colors.blue[100] : Colors.green[100],
       ),
     );
   }

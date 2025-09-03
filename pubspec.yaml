@@ -39,7 +39,11 @@ dependencies:
   path_provider: ^2.1.1
   intl: ^0.20.2
   url_launcher: ^6.3.1
-
+  image_picker: ^0.8.7     # Para seleccionar imágenes/fotos
+  http: ^0.13.5            # Para peticiones HTTP
+  http_parser: ^4.0.2      # Para manejo de tipos MIME
+  mime: ^1.0.4             # Para detección de tipos MIME
+  path: ^1.8.3             # Para manejo de rutas de archivos
 dev_dependencies:
   flutter_test:
     sdk: flutter
