@@ -1,7 +1,7 @@
 import 'item_type_model.dart';
 
 class WorkOrderItem {
-  final int id;
+  final int? id; // Cambiado a opcional
   String description;
   int quantity;
   double price;
@@ -10,22 +10,22 @@ class WorkOrderItem {
   ItemType? itemType;
 
   WorkOrderItem({
-    required this.id,
+    this.id, // Ahora es opcional
     required this.description,
     required this.quantity,
     required this.price,
     required this.itemTypeId,
     required this.workOrderId,
-    required this.itemType,
+    this.itemType,
   });
 
   factory WorkOrderItem.fromJson(Map<String, dynamic> json) => WorkOrderItem(
-        id: json['id'],
-        description: json['description'],
-        quantity: json['quantity'],
-        price: double.parse(json['price'].toString()),
-        itemTypeId: json['itemTypeId'],
-        workOrderId: json['workOrderId'],
+        id: json['id'], // Puede ser null
+        description: json['description'] ?? '',
+        quantity: json['quantity'] ?? 0,
+        price: double.tryParse(json['price'].toString()) ?? 0.0,
+        itemTypeId: json['itemTypeId'] ?? 0,
+        workOrderId: json['workOrderId'] ?? 0,
         itemType: json["itemType"] != null
             ? ItemType.fromJson(json['itemType'])
             : null,
@@ -33,7 +33,7 @@ class WorkOrderItem {
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = {};
-    data['id'] = id;
+    if (id != null) data['id'] = id;
     data['description'] = description;
     data['quantity'] = quantity;
     data['price'] = price;
@@ -45,6 +45,16 @@ class WorkOrderItem {
     return data;
   }
 
+  /// Mapa para envío al servidor (sin id ni relaciones)
+  Map<String, dynamic> toCreateJson() {
+    return {
+      'description': description,
+      'quantity': quantity,
+      'price': price,
+      'itemTypeId': itemTypeId,
+    };
+  }
+
   // Método de conveniencia para obtener el subtotal
   double get subtotal => quantity * price;
 
@@ -54,10 +64,26 @@ class WorkOrderItem {
   // Método de conveniencia para obtener el código del tipo
   String get itemTypeCode => itemType?.code ?? '';
 
+  // Verificar si es un servicio o producto
+  bool get isService =>
+      itemType?.code?.toLowerCase() == 'servicio' ||
+      itemType?.name?.toLowerCase().contains('servicio') == true;
+
+  bool get isProduct => !isService;
+
   @override
   String toString() {
-    return 'WorkOrderItemCreate{description: $description, quantity: $quantity, price: $price, itemTypeId: $itemTypeId}';
+    return 'WorkOrderItem{id: $id, description: $description, quantity: $quantity, price: $price, itemTypeId: $itemTypeId}';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is WorkOrderItem && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class WorkOrderItemCreate {
@@ -77,10 +103,10 @@ class WorkOrderItemCreate {
 
   factory WorkOrderItemCreate.fromJson(Map<String, dynamic> json) =>
       WorkOrderItemCreate(
-        description: json['description'],
-        quantity: json['quantity'],
-        price: double.parse(json['price'].toString()),
-        itemTypeId: json['itemTypeId'],
+        description: json['description'] ?? '',
+        quantity: json['quantity'] ?? 0,
+        price: double.tryParse(json['price'].toString()) ?? 0.0,
+        itemTypeId: json['itemTypeId'] ?? 0,
         itemType: json["itemType"] != null
             ? ItemType.fromJson(json['itemType'])
             : null,
@@ -104,6 +130,19 @@ class WorkOrderItemCreate {
 
   // Método de conveniencia para obtener el código del tipo
   String get itemTypeCode => itemType?.code ?? '';
+
+  /// Convierte a WorkOrderItem (después de crear en servidor)
+  WorkOrderItem toWorkOrderItem({int? id, int? workOrderId}) {
+    return WorkOrderItem(
+      id: id,
+      description: description,
+      quantity: quantity,
+      price: price,
+      itemTypeId: itemTypeId,
+      workOrderId: workOrderId ?? 0,
+      itemType: itemType,
+    );
+  }
 
   @override
   String toString() {
