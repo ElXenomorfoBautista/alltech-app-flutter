@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:alltech_app/app/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -56,6 +58,8 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
                     // Evidencias y documentos
                     _buildEvidencesCard(context),
                     const SizedBox(height: 16),
+                    _buildSelectedFilesCard(),
+                    const SizedBox(height: 16),
 
                     // Estadísticas y progreso
                     _buildStatsCard(serviceSheet),
@@ -68,7 +72,8 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
           ],
         );
       }),
-      floatingActionButton: _buildFloatingActions(),
+/*       floatingActionButton: _buildFloatingActions(),
+ */
     );
   }
 
@@ -442,42 +447,58 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
 
             // Botones de acción
             Expanded(
-              flex: 3,
+              flex: 4,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  // Botón ejecutar (solo si es ejecutor y está pendiente)
-                  if (controller.isExecutor.value &&
-                      serviceSheet.isPending) ...[
-                    ElevatedButton.icon(
-                      onPressed: () => _showExecuteDialog(serviceSheet),
-                      icon: const Icon(Icons.play_arrow, size: 16),
-                      label: const Text('Ejecutar'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
+                  if (serviceSheet.isPending) ...[
+                    OutlinedButton(
+                      onPressed: () => _showAddEvidenceDialog(),
+                      style: OutlinedButton.styleFrom(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
+                        side: const BorderSide(color: Colors.purple),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 8,
                         ),
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        size: 16,
+                        color: Colors.purple,
+                      ),
+                    ),
+                  ],
+                  if (controller.isExecutor.value &&
+                      serviceSheet.isPending) ...[
+                    OutlinedButton(
+                      onPressed: () => _showExecuteDialog(serviceSheet),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        side: const BorderSide(color: Colors.blue),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow,
+                        size: 16,
+                        color: Colors.blue,
                       ),
                     ),
                   ],
 
-                  // Botón aprobar (solo si es aprobador y no está pendiente)
                   if (controller.isApproval.value &&
                       !serviceSheet.isPending) ...[
                     const SizedBox(width: 8),
-                    ElevatedButton.icon(
+                    OutlinedButton(
                       onPressed: () => _showApprovalDialog(serviceSheet),
-                      icon: const Icon(Icons.check_circle, size: 16),
-                      label: const Text('Aprobar'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
+                      style: OutlinedButton.styleFrom(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -486,13 +507,14 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
                           vertical: 8,
                         ),
                       ),
+                      child: const Icon(Icons.check_circle, size: 16),
                     ),
                   ],
 
                   // Botón editar (siempre visible para el owner)
                   const SizedBox(width: 8),
                   OutlinedButton(
-                    onPressed: () => _navigateToEdit(serviceSheet),
+                    onPressed: () => null,
                     style: OutlinedButton.styleFrom(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
@@ -846,10 +868,6 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
     );
   }
 
-  void _navigateToEdit(ServiceSheet serviceSheet) {
-    Get.toNamed('/service-sheet/edit', arguments: serviceSheet);
-  }
-
   void _showExecuteDialog(ServiceSheet serviceSheet) {
     Get.dialog(
       AlertDialog(
@@ -933,7 +951,7 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1245,6 +1263,275 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
       );
     });
   }
+// PARTE 1: Agregar este widget en tu ServiceSheetDetailView después de _buildEvidencesCard
+
+  Widget _buildSelectedFilesCard() {
+    return Obx(() {
+      if (controller.selectedFiles.isEmpty && !controller.isUploading.value) {
+        return const SizedBox();
+      }
+
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.attach_file,
+                        color: Get.theme.primaryColor,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Archivos Seleccionados',
+                        style: Get.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (controller.selectedFiles.isNotEmpty)
+                    IconButton(
+                        onPressed: () => _showClearFilesDialog(),
+                        icon: Icon(Icons.clear))
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 16),
+
+              // Progress bar si está subiendo
+              if (controller.isUploading.value) ...[
+                _buildUploadProgress(),
+                const SizedBox(height: 16),
+              ],
+
+              // Lista de archivos seleccionados
+              if (controller.selectedFiles.isNotEmpty) ...[
+                ...controller.selectedFiles.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final fileWithName = entry.value;
+                  return _buildSelectedFileItem(fileWithName, index);
+                }),
+                const SizedBox(height: 16),
+                _buildUploadButton(),
+              ],
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildSelectedFileItem(dynamic fileWithName, int index) {
+    final file = fileWithName.file;
+    final fileName = fileWithName.name;
+    final fileSize = _getFileSize(file);
+    final fileType = _getFileTypeFromName(fileName);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        children: [
+          // Icono del tipo de archivo
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _getFileTypeColor(fileType).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(
+              _getFileTypeIcon(fileType),
+              color: _getFileTypeColor(fileType),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Información del archivo
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  fileName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  fileSize,
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Botones de acción
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Botón editar nombre
+              IconButton(
+                icon: Icon(Icons.edit, size: 18, color: Colors.blue.shade600),
+                onPressed: () => _showEditFileNameDialog(index, fileName),
+                tooltip: 'Editar nombre',
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+              // Botón eliminar
+              IconButton(
+                icon: Icon(Icons.delete, size: 18, color: Colors.red.shade600),
+                onPressed: () => _showRemoveFileDialog(index, fileName),
+                tooltip: 'Eliminar',
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUploadProgress() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Subiendo archivos...',
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+              ),
+            ),
+            Text(
+              '${(controller.uploadProgress.value * 100).round()}%',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Get.theme.primaryColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        LinearProgressIndicator(
+          value: controller.uploadProgress.value,
+          backgroundColor: Colors.grey.shade200,
+          valueColor: AlwaysStoppedAnimation<Color>(Get.theme.primaryColor),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUploadButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: controller.isUploading.value ? null : controller.uploadFiles,
+        icon: controller.isUploading.value
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.cloud_upload),
+        label: Text(
+          controller.isUploading.value
+              ? 'Subiendo...'
+              : 'Subir ${controller.selectedFiles.length} archivo${controller.selectedFiles.length != 1 ? 's' : ''}',
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Get.theme.primaryColor,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  // Métodos de utilidad para archivos
+  String _getFileSize(File file) {
+    try {
+      final bytes = file.lengthSync();
+      final kb = bytes / 1024;
+      final mb = kb / 1024;
+
+      if (mb >= 1) {
+        return '${mb.toStringAsFixed(1)} MB';
+      } else if (kb >= 1) {
+        return '${kb.toStringAsFixed(1)} KB';
+      } else {
+        return '$bytes B';
+      }
+    } catch (e) {
+      return 'N/A';
+    }
+  }
+
+  String _getFileTypeFromName(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp'].contains(extension)) {
+      return 'image';
+    } else if (extension == 'pdf') {
+      return 'pdf';
+    } else if (['doc', 'docx'].contains(extension)) {
+      return 'document';
+    } else if (['mp4', 'avi', 'mov'].contains(extension)) {
+      return 'video';
+    }
+    return 'file';
+  }
+
+  IconData _getFileTypeIcon(String fileType) {
+    switch (fileType) {
+      case 'image':
+        return Icons.image;
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'document':
+        return Icons.description;
+      case 'video':
+        return Icons.videocam;
+      default:
+        return Icons.insert_drive_file;
+    }
+  }
+
+  Color _getFileTypeColor(String fileType) {
+    switch (fileType) {
+      case 'image':
+        return Colors.blue;
+      case 'pdf':
+        return Colors.red;
+      case 'document':
+        return Colors.purple;
+      case 'video':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
 
   Widget _buildEvidenceTile(dynamic evidence, int index) {
     final bool isImage = evidence.file?.fileType?.contains('image') ?? false;
@@ -1437,7 +1724,7 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
                   child: ElevatedButton.icon(
                     onPressed: () {
                       Get.back();
-                      controller.takePhoto();
+                      _pickFromCamera();
                     },
                     icon: const Icon(Icons.camera_alt),
                     label: const Text('Cámara'),
@@ -1451,7 +1738,7 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
                   child: ElevatedButton.icon(
                     onPressed: () {
                       Get.back();
-                      controller.pickImage();
+                      _pickFromGallery();
                     },
                     icon: const Icon(Icons.photo_library),
                     label: const Text('Galería'),
@@ -1466,7 +1753,7 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
             ElevatedButton.icon(
               onPressed: () {
                 Get.back();
-                //controller.pickDocument();
+                _pickDocument();
               },
               icon: const Icon(Icons.attach_file),
               label: const Text('Documento'),
@@ -1745,118 +2032,6 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
     );
   }
 
-  Widget _buildFloatingActions() {
-    return Obx(() {
-      final serviceSheet = controller.serviceSheet.value;
-      if (serviceSheet == null) return const SizedBox();
-
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          // Progreso de upload (si hay archivos subiendo)
-          if (controller.isUploading.value)
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Subiendo evidencias...',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: controller.uploadProgress.value,
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(Get.theme.primaryColor),
-                  ),
-                ],
-              ),
-            ),
-
-          // Botón de evidencias
-          if (controller.isExecutor.value || controller.isApproval.value)
-            FloatingActionButton(
-              heroTag: 'evidence',
-              onPressed: () => _showAddEvidenceDialog(),
-              backgroundColor: Colors.purple,
-              child: const Icon(Icons.camera_alt, color: Colors.white),
-              tooltip: 'Agregar evidencia',
-            ),
-
-          const SizedBox(height: 16),
-
-          // Botón principal según el estado y rol
-          if (controller.isExecutor.value && serviceSheet.isPending)
-            FloatingActionButton.extended(
-              heroTag: 'execute',
-              onPressed: () => _showExecuteDialog(serviceSheet),
-              backgroundColor: Colors.blue,
-              icon: const Icon(Icons.play_arrow, color: Colors.white),
-              label: const Text(
-                'Ejecutar',
-                style:
-                    TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-              ),
-            )
-          else if (controller.isApproval.value &&
-              !serviceSheet.isPending &&
-              !serviceSheet.isCompleted)
-            FloatingActionButton.extended(
-              heroTag: 'approve',
-              onPressed: () => _showApprovalDialog(serviceSheet),
-              backgroundColor: Colors.green,
-              icon: const Icon(Icons.check_circle, color: Colors.white),
-              label: const Text(
-                'Aprobar',
-                style:
-                    TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-              ),
-            )
-          else if (serviceSheet.isCompleted)
-            FloatingActionButton.extended(
-              heroTag: 'completed',
-              onPressed: null,
-              backgroundColor: Colors.green.shade300,
-              icon: const Icon(Icons.done_all, color: Colors.white),
-              label: const Text(
-                'Completado',
-                style:
-                    TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-              ),
-            ),
-        ],
-      );
-    });
-  }
-
   // Métodos de utilidad adicionales
   double _calculateProgress(ServiceSheet serviceSheet) {
     double progress = 0.0;
@@ -1981,6 +2156,232 @@ class ServiceSheetDetailView extends GetView<ServiceSheetDetailController> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showEditFileNameDialog(int index, String currentName) {
+    final textController = TextEditingController(text: currentName);
+    final nameWithoutExtension = currentName.contains('.')
+        ? currentName.substring(0, currentName.lastIndexOf('.'))
+        : currentName;
+    textController.text = nameWithoutExtension;
+
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Editar Nombre del Archivo'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Nombre actual: $currentName',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: textController,
+              decoration: const InputDecoration(
+                labelText: 'Nuevo nombre',
+                border: OutlineInputBorder(),
+                hintText: 'Ingresa el nuevo nombre',
+              ),
+              autofocus: true,
+              onSubmitted: (value) {
+                if (value.trim().isNotEmpty) {
+                  controller.updateFileName(index, value.trim());
+                  Get.back();
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'La extensión se mantendrá automáticamente',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newName = textController.text.trim();
+              if (newName.isNotEmpty) {
+                controller.updateFileName(index, newName);
+                Get.back();
+              }
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRemoveFileDialog(int index, String fileName) {
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Eliminar Archivo'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('¿Estás seguro de que quieres eliminar este archivo?'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.insert_drive_file,
+                    color: Colors.grey.shade600,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      fileName,
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Esta acción no se puede deshacer.',
+              style: TextStyle(
+                color: Colors.red.shade600,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              controller.removeFileFromSelection(index);
+              Get.back();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child:
+                const Text('Eliminar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showClearFilesDialog() {
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Limpiar Archivos'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+                '¿Estás seguro de que quieres eliminar todos los archivos seleccionados?'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.warning_outlined,
+                    color: Colors.orange.shade600,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Se eliminarán ${controller.selectedFiles.length} archivo${controller.selectedFiles.length != 1 ? 's' : ''}',
+                      style: TextStyle(
+                        color: Colors.orange.shade800,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              controller.clearSelectedFiles();
+              Get.back();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+            child: const Text('Limpiar Todo',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickFromCamera() async {
+    await controller.takePhoto();
+
+    if (controller.selectedFiles.isNotEmpty) {
+      Get.snackbar(
+        'Archivo agregado',
+        'Imagen capturada desde la cámara',
+        backgroundColor: Colors.green.shade100,
+        colorText: Colors.green.shade900,
+      );
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    final initialCount = controller.selectedFiles.length;
+    await controller.pickImage();
+    final addedCount = controller.selectedFiles.length - initialCount;
+
+    if (addedCount > 0) {
+      Get.snackbar(
+        'Archivos agregados',
+        'Se agregaron $addedCount imagen${addedCount != 1 ? 'es' : ''} de la galería',
+        backgroundColor: Colors.green.shade100,
+        colorText: Colors.green.shade900,
+      );
+    }
+  }
+
+  Future<void> _pickDocument() async {
+    Get.snackbar(
+      'Próximamente',
+      'Selección de documentos estará disponible pronto',
+      backgroundColor: Colors.blue.shade100,
+      colorText: Colors.blue.shade900,
     );
   }
 }
